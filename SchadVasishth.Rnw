@@ -1,0 +1,608 @@
+\documentclass[doc]{apa6}
+
+\usepackage[natbibapa]{apacite} 
+\usepackage[american]{babel}
+\usepackage[utf8x]{inputenc}
+\usepackage{csquotes}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+\usepackage{setspace}
+%\usepackage[doublespacing]{setspace}
+\usepackage[pagewise]{lineno}
+
+\usepackage{amsmath,amssymb,amsfonts}
+
+\usepackage{url}   % this allows us to cite URLs in the text
+\usepackage{graphicx}   % allows for graphic to float when doing jou or doc style
+\usepackage{verbatim}   % allows us to use \begin{comment} environment
+\usepackage{caption}
+\usepackage{subcaption}
+%\usepackage{lscape}
+\usepackage{pdflscape}
+
+\usepackage{fancyvrb}
+
+\usepackage{newfloat}
+\DeclareFloatingEnvironment[
+%    fileext=los,
+%    listname=List of Schemes,
+%    name=Listing,
+%    placement=!htbp,
+%    within=section,
+]{listing}
+
+%\title{The posterior probability of a null hypothesis being true given a statistically significant result}
+\title{The posterior probability of a null hypothesis given a statistically significant result}
+\shorttitle{The probability of the null being true}
+
+\twoauthors{Daniel J. Schad}{Shravan Vasishth}
+
+\twoaffiliations{University of Potsdam, Potsdam, Germany.}{University of Potsdam, Potsdam, Germany.}
+
+\leftheader{Schad \& Vasishth}
+
+\authornote{Please send correspondence to  \{schad,vasishth\}@uni-potsdam.de.}
+%\note{\today}
+
+\journal{Manuscript} 
+\volume{} 
+\keywords{Null hypothesis significance testing, Bayesian inference, statistical power}
+
+%\doublespacing
+
+\abstract{Some researchers informally assume that, when they carry out a null hypothesis significance test, a statistically significant result lowers the probability of the null hypothesis being true. Although technically wrong (the null hypothesis does not have a probability associated with it), it is possible under certain assumptions to compute the posterior probability of the null hypothesis being true. We show that this intuitively appealing belief, that the probability of the null being true falls after a significant effect, is in general incorrect and only holds when statistical power is high and when, as suggested by Benjamin et al., 2018, a type I error level is defined that is lower than the conventional one (e.g., $\alpha = 0.005$). We provide a Shiny app (https://danielschad.shinyapps.io/probnull/) that allows the reader to visualize the different possible scenarios.}
+
+\ccoppy{Draft of \today} 
+
+\linenumbers
+
+\begin{document}
+
+\maketitle
+
+%\section*{Introduction}
+
+%\textbf{Some researchers informally assume that, when they carry out a null hypothesis significance test, a statistically significant result lowers the probability of the null hypothesis being true. Although technically wrong (the null hypothesis does not have a probability associated with it), it is possible under certain assumptions to compute the posterior probability of the null hypothesis being true. We show that this intuitively appealing belief, that the probability of the null being true falls after a significant effect, is in general incorrect and only holds when statistical power is high and when, as suggested by Benjamin et al., 2018, a type I error level is defined that is lower than the conventional one (e.g., $\alpha = 0.005$). We provide a Shiny app (https://danielschad.shinyapps.io/probnull/) that allows the reader to visualize the different possible scenarios.}
+
+Null hypothesis significance testing (NHST), as it is practised in all areas of science, involves a fairly straightforward procedure. We begin by positing a null hypothesis $H_0$, usually a point null hypothesis that a parameter $\mu$ has a specific value: $H_0: \mu=\mu_0$. Then we collect data, compute the sample mean $\bar{x}$, and estimate the standard error $SE$ from the sample standard deviation $s$ and sample size $n$ by computing $SE=s/\sqrt{n}$. Next, we compute some statistic such as the observed t-statistic, $t_{observed}=\frac{\bar{x}-\mu_0}{SE}$. If the absolute value of the observed t-statistic is larger than the absolute value of some critical t-value, we reject the null hypothesis.  Usually we also compute the p-value, which is the probability of obtaining the observed t-statistic, or a value more extreme, assuming that the null hypothesis is true. 
+Conventionally, when the p-value is less than $0.05$, we reject the null hypothesis. A common phrasing is to say that we have a ``statistically significant'' result, and that the effect of interest is ``reliable.'' As is well known, an issue that is of great importance here is false and true discovery rates \citep{betancourt2018calibrating}. 
+
+The false discovery rate is the probability of incorrectly rejecting the null when the null is in fact true; this is referred to as Type I error. It is conventionally fixed at $0.05$. 
+The true discovery rate is the probability of correctly rejecting the null when $\mu$ has some specific point value that is not the null value $\mu_0$; this is usually called power. The quantity (1-power) is called Type II error, often written as $\beta$; it is the probability of incorrectly accepting the null when it is false with some specific value for $\mu$, i.e., when the true $\mu$ is some specific point value other than $\mu_0$.  
+
+It is well-known that power needs to be high in order to draw inferences correctly from a statistically significant result; when power is low, statistically significant results are \textit{guaranteed} to be overestimates or even to have the wrong sign \citep{gelmancarlin}, and they are likely to be unreplicable 
+\citep{VasishthMertzenJaegerGelman2018}. In other words, a significant result under low power is \textit{never} ``reliable'' in any sense of the word.  
+
+
+<<echo=FALSE>>=
+knitr::opts_chunk$set(fig.height=4.2, fig.path='Figs/',echo=FALSE, warning=FALSE, message=FALSE)
+@
+
+Researchers sometimes assume that a significant result changes \textit{the probability of the null hypothesis being true}. 
+For example, a survey by \cite{tam2018doctors} reports this widespread misunderstanding of the p-value by medical doctors. As they put it:
+
+\begin{quote}
+Many respondents conceptualised the P value as numerically indicating the natural probability of some phenomenon --- for instance, a 95\% or 5\% chance of the truth or falsity of a hypothesis in the real world.
+\end{quote}
+
+A second example comes from \cite{doherty2002fluoride}. On page 376, Table 2, they state that ``[the p-value] is the probability that the null hypothesis is true.'' A third example comes from a textbook written for medical researchers 
+\citep{harristaylor}. On their page 24, they write: 
+``The P value is used when we wish to see how likely it is that a hypothesis is true''; and on 
+page 26, they write: ``The P value gives the probability that the null hypothesis is true.''
+
+Here, we investigate the posterior probability of the null hypothesis being true under different possible assumptions. Specifically, when power is low, medium, or high, and when Type I error is 0.05, 0.01, or 0.005.
+
+Intuitively, it does seem obvious that rejecting the null hypothesis after finding a significant result leads us to change our belief about the probability of the null hypothesis being true. We will show in this paper that this intuitive belief is in general wrong, except in two extreme situations that are rarely or never realized: when statistical power is high (greater than 0.80) and Type I error is low (0.005).
+
+Note that, technically, talking about ``the probability that the null hypothesis is true'' is meaningless in the NHST framework. Probability mass functions can only be associated with discrete outcomes that constitute a random variable. An example from everyday life would be the probability of catching a train when running late: there are two possible outcomes, either one gets the train or not, and each outcome has a probability associated with it. By contrast, the null hypothesis is not a random variable and therefore cannot have a probability associated with the two possible outcomes of being true or false. The null hypothesis is either true or it is false. 
+
+However, in order to talk about the probability of the null hypothesis being true or false, we can assume for the moment that the null hypothesis is a random variable.  Suppose that before running the experiment, we begin with the assumption that the null hypothesis is believed to be true with some probability $\theta_{prior}$. Once we get a significant result, the probability of the null being true should (intuitively) fall to some lower value $\theta_{posterior}$. 
+
+But these point values $\theta_{prior}$ and $\theta_{posterior}$ only partly characterize our beliefs. Before running the experiment, we surely have some uncertainty about the probability $\theta_{prior}$ that the null is true. For example, the null may be true at the outset with probability somewhere between 85 and 95\%. Thus, the prior probability of the null being true has a probability \textit{distribution} associated with it, it cannot be just a \textit{point} value. Still relying on intuition, we might say that a  statistically significant result should shift this probability distribution to some lower range, say 10-20\%. Such a hypothetical situation is visualized in Figure \ref{fig:illustration}a.
+
+
+\begin{figure}[!h]
+\centering
+<<include=TRUE,echo=FALSE, fig.width=8, fig.height=4>>=
+library(ggplot2)
+library(ggridges)
+library(tidyverse)
+library(jtools)
+library(grid)
+prior <- rbeta(10000, shape1 = 60, shape2 = 6)
+#prior <- rbeta(100000, shape1 = 9, shape2 = 1)
+posterior <- rbeta(100000, shape1 = 15, shape2 = 100)
+dat <- data.frame(Prior=prior, Posterior=posterior)
+dat <- dat %>% gather(key="dist",value="h0")
+dat$dist <- factor(dat$dist, levels=c("Prior","Posterior"))
+pp1a <- ggplot(data=dat, aes(x=h0, y=dist, fill=dist)) + 
+  geom_density_ridges2(quantile_lines=TRUE, quantiles = c(0.025, 0.975), scale=3) +
+  scale_fill_manual(name="",values=c("lightblue","grey"))+
+  labs(title="Imagined change in belief in the\nnull given a significant result",
+       y="Density", x=expression(paste(Prob(H[0]),"=",theta))) + 
+  theme_bw(base_size=12) + theme(legend.position=c(0.5,0.8))
+
+set.seed(123)
+nsim  <- 1e5 #100000
+# theta: prior probability against H0
+dat0 <- data.frame(theta=rbeta(nsim, shape1 = 60, shape2 =  6)) 
+thetaQ <- quantile(dat0$theta,p=c(0.025,0.975))
+dat0$quantX <- NA
+dat0$quantX[1] <- mean(thetaQ)
+dat0$quant <- NA
+dat0$quant[1] <- paste(substr(formatC(thetaQ, digits=2, format="g"),2,10),collapse=" - ")
+#quartz()
+pp1b <- ggplot(data=dat0) + 
+  geom_density_ridges2(aes(x=theta, y=1), fill="lightblue", alpha=0.7,
+                       quantile_lines=TRUE, quantiles=c(0.025, 0.975), scale=4) +
+  geom_text(aes(x=quantX,y=3.3,label=quant))+
+  coord_cartesian(xlim=c(0,1))+
+  labs(x=expression(paste(Prob(H[0]),"=",theta)), y="Density",
+       title="Prior probability of the\nnull hypothesis") + 
+  theme_bw(base_size=12)
+
+#quartz(width=8, height=4)
+cowplot::plot_grid(pp1a, pp1b, labels=c('a','b'), label_size=16)
+@
+\caption{Prior and posterior probability of the null hypothesis. a) An illustration of how our belief in the null hypothesis---expressed as a probability distribution--- might hypothetically shift once we see a statistically significant result. The vertical lines show the 95\% credible intervals. 
+b) Prior probability of the null hypothesis being true, expressed as a Beta(60,6) distribution.}
+\label{fig:illustration}
+\end{figure}
+
+
+%In the frequentist paradigm, this way of thinking about the null hypothesis is not expressed in terms of the degree of belief in the null hypothesis but, as we showed above, this is how many researchers informally reason about the null hypothesis. 
+
+To summarize, strictly speaking, the null hypothesis is either true or false, it has no probability distribution associated with it. So, one cannot even talk about the probability of the null hypothesis being true. Nevertheless, it is possible to relax this strict stipulation and ask ourselves: how strongly do we believe that the null is true before and after we do a significance test?
+A domain expert working in a particular field should be able to state, as a probability distribution, his or her a priori confidence level in a particular null hypothesis. In practice, some expert elicitation might be required \citep{ohagan2006uncertain,OakleyOHagan}. 
+
+Bayes' rule allows us to calculate this posterior probability of the null hypothesis being true.  Bayes' rule states that, given a vector of data $y$, we can derive the probability density function of a parameter or a vector of parameters $\theta$ given data, $f(\theta\mid y)$, 
+by multiplying the likelihood function of the data, $f(y \mid \theta)$, with the prior probability of the parameter(s), $f(\theta)$, and dividing by the marginal likelihood of the data, $f(y)$:
+
+
+\begin{equation}
+f(\theta\mid y) = \frac{f(y \mid \theta) f(\theta)}{f(y)}
+\end{equation}
+
+The marginal likelihood of the data can be computed by integrating out the parameter(s) $\theta$:
+
+\begin{equation}
+f(y)= \int f(x,\theta)\, d\theta = \int f(y\mid \theta) f(\theta)\, d\theta
+\end{equation}
+
+As \cite{mcelreath2016statistical} mentions, 
+Bayes' rule can be used to work out the posterior probability of the null being true given a significant effect. This is what we turn to next. Before we can carry out this computation, 
+we have to decide on the prior probability of the null hypothesis being true; this is not too difficult to determine for specific research questions. We could start by  eliciting from a researcher their prior belief about the probability of some particular null hypothesis being true: $Prob(H_0~true)$. 
+Given such a prior probability for the null hypothesis, we then stipulate a Type I error,  $Prob(sig | H_0~true)=\alpha$ and a Type II error, $Prob(not~sig | H_0~false)=\beta$. (When we write $H_0~false$, we mean that the null is false with some specific value for the parameter $\mu$).
+Once we have these numbers, 
+Bayes' rule allows us to compute $Prob(H_0~true|sig)$, the posterior probability of the null being true given a significant result. In other words, Bayes' rule helps us quantify the extent to which our prior belief should shift in the light of the long-run probability of obtaining a statistically significant result:
+
+\begin{equation}
+Prob(H_0~true | sig) = \frac{Prob(sig|H_0~true)\times Prob(H_0~true)}{Prob(sig)}
+\end{equation}
+
+The denominator $Prob(sig)$ is the marginal probability of obtaining a significant effect under repeated sampling, and is straightforward to compute using the law of total probability \citep{kolmogorov2018foundations}. This law states that the probability of a random variable Z, $Prob(Z)$, given another random variable A, is $Prob(Z | A)Prob(A) + Prob(Z | \neg A) Prob(\neg A)$. Translating this to our particular question, the event $Z$ is the significant effect we obtained under repeated sampling, and the event $A$ is the null hypothesis being true or false.
+
+\begin{equation}
+\begin{split}
+Prob(sig) =& Prob(sig |  H_0~true) Prob(H_0~true) + Prob(sig | H_0 ~false) Prob(H_0~false) \\
+        =& \alpha \times Prob(H_0~true) + (1-\beta) \times (1-Prob(H_0~true)) \\
+        =& \alpha \times \theta + (1-\beta) \times (1-\theta) \\
+\end{split}
+\end{equation}
+
+\noindent
+The last line above arises because 
+$Prob(sig |  H_0~true)= \alpha$ (Type I error), $Prob(sig | H_0 false) = 1-\beta$ (power), and $Prob(H_0~true)=\theta$ (the prior probability of the null being true).
+
+Thus, $Prob(H_0~true | sig)$ is really a function of three quantities:
+
+\begin{enumerate}
+\item The false discovery rate, or Type I error $\alpha$.
+\item The true discovery rate, or power $(1-\beta)$, where $\beta$ is Type II error.
+\item The prior probability of null being true ($\theta$).
+\end{enumerate}
+
+We will now compute, under different assumptions, the posterior probability of the null being true given a significant effect. 
+Before we can do this, we have to decide on a prior probability of the null hypothesis being true. What is a reasonable prior distribution to start with?
+In a recent paper, \cite{benjamin2018redefine} write the following:
+``Prediction markets and analyses of replication results both suggest that for psychology experiments, the prior odds of H1 relative to H0 may be only about 1:10. A similar number has been suggested in cancer clinical trials, and the number
+is likely to be much lower in preclinical biomedical research.'' 
+A prior odds of 1:10 of the alternative being true relative to the null means that the probability of the null being true is about 90\%. We take this estimate as a starting point; below we will also consider alternative scenarios where the probability of the null being true is lower. 
+
+For now, we will assume that the null hypothesis $H_0$ has the high prior probability of 90\% of being true. Just as a coin has heads and tails as possible outcomes, the null hypothesis can have two possible outcomes, true or false, each with some probability.   Thus, we can now talk about the probability  $\theta$ of the null hypothesis being true. We can model this by assuming that a success or failure is generated from a Bernoulli process that has probability of success $\theta$:
+
+\begin{equation}
+H_0 \sim Bernoulli(\theta)
+\end{equation}
+
+<<echo=FALSE>>=
+lower<-round(qbeta(0.025,shape1 = 60, shape2=6),2)
+upper<-round(qbeta(0.975,shape1 = 60, shape2=6),2)
+@
+
+Because our prior belief that the null is true will come with some uncertainty (it is not merely a point value), we can model this prior belief through a Beta distribution.
+For example,  a prior $Beta(60,6)$ on $\theta$ expresses the assumption that the prior probability of the null being true is between \Sexpr{lower} and 
+\Sexpr{upper} with probability 95\% (approximately), with mean 
+probability approximately 0.90. 
+The lower and upper bounds of the 95\% credible interval can be computed using the inverse cumulative distribution function of the Beta distribution. We simply solve the integrals for the lower and upper bounds:
+
+\begin{equation}
+\int_{-\infty}^{lower} f(x) dx = \int_{-\infty}^{lower} \frac{\Gamma(a+b)}{\Gamma(a)\Gamma(b)}x^{a-1}(1-x)^{b-1}\, dx = 0.025
+\end{equation}
+
+and 
+
+\begin{equation}
+\int_{-\infty}^{upper} f(x) dx = \int_{-\infty}^{upper} \frac{\Gamma(a+b)}{\Gamma(a)\Gamma(b)}x^{a-1}(1-x)^{b-1}\, dx = 0.975
+\end{equation}
+
+The mean can be computed  from the fact that a random variable $X$ that is generated from a Beta distribution with parameters 
+$a$ and $b$ has mean:
+
+\begin{equation}
+E[X] = \frac{a}{a + b}
+\end{equation}
+
+Given the $a$ and $b$ parameters, the mean is:
+
+\begin{equation}
+E[X] = \frac{a}{a + b} = \frac{60}{60+6} = \Sexpr{round(60/66,1)}
+\end{equation}
+
+
+Figure \ref{fig:illustration}b %\ref{fig:priorProb} 
+visualizes this prior probability of the null hypothesis being true.
+
+%\begin{figure}[!htbp]
+%\centering
+%<<priorProb, include=TRUE,echo=FALSE,fig.width=8,fig.height=6>>=
+%set.seed(123)
+%nsim  <- 1e5 #100000
+%# theta: prior probability against H0
+%dat0 <- data.frame(theta=rbeta(nsim, shape1 = 60, shape2 =  6)) 
+%thetaQ <- quantile(dat0$theta,p=c(0.025,0.975))
+%dat0$quantX <- NA
+%dat0$quantX[1] <- mean(thetaQ)
+%dat0$quant <- NA
+%dat0$quant[1] <- paste(substr(formatC(thetaQ, digits=2, format="g"),2,10),collapse=" - ")
+%#quartz()
+%ggplot(data=dat0) + 
+%  geom_density_ridges2(aes(x=theta, y=1), fill="lightblue", alpha=0.7,
+%                       quantile_lines=TRUE, quantiles=c(0.025, 0.975), scale=4) +
+%  geom_text(aes(x=quantX,y=3.3,label=quant))+
+%  coord_cartesian(xlim=c(0,1))+
+%  labs(x=expression(paste(Prob(H[0]),"=",theta)), y="Density",
+%       title="Prior probability of the null hypothesis") + 
+%  theme_bw(base_size=20)
+%@
+%  \caption{Prior probability of the null hypothesis being true, expressed as a Beta(60,6) distribution.}\label{fig:priorProb}
+%\end{figure}
+
+
+It is important to note that this prior probability does not state that the probability of the true mean $\mu$ being exactly $0$ is this high.
+%That claim would be absurd because in a continuous distribution, the probability of obtaining a point value is always 0, because the area under the curve at a point value (the probability of obtaining that value) is zero. 
+Rather, the claim is that our prior belief is about the null hypothesis distribution being  $Normal(0,\sigma)$ (just using the normal distribution as an example). For example, in reaction time or reading data, we could assume that the difference between two conditions is $Normal(0,5)$ on the milliseconds scale. This assumption entails that it is 95\% probable that the true mean (which is usually a difference in means between two conditions being compared) lies between -10 and 10 ms, with mean 0. Such a null hypothesis could easily have a high prior probability of being true in many cases: \cite{JaegerEngelmannVasishth2017} report in a meta-analysis involving about 100 reading studies that certain classes of working memory effects in sentence processing may be effectively 0 ms, with some uncertainty around this estimate (for example, $0 \pm 6$ ms in one case, see Table 4, p.\ 327 of \citealp{JaegerEngelmannVasishth2017}). Such a meta-analytic estimate could be used as a starting point for defining a null hypothesis distribution when planning a future study. 
+
+Given this prior probability density function Beta(60,6) for $\theta$, we are now in a position to investigate how the posterior probability of the null being true changes under different assumptions. 
+We can use Monte Carlo sampling to compute the posterior probability of $H_0$ being true given significant results under repeated sampling:
+
+\begin{enumerate}
+\item
+Fix $\alpha$ (Type I error) and $\beta$ (Type II error).
+\item Do 100,000 times:
+\begin{enumerate}
+\item Sample one value $\theta$ from the Beta(60,6) distribution.
+\item Compute posterior probability of $\theta$ given  $\alpha, \beta$, and the sampled value of $\theta$ from the prior distribution Beta(60,6):
+
+\begin{equation}
+\alpha\times \frac{\theta}{(\alpha\times \theta + (1-\beta)\times(1-\theta))}
+\end{equation}
+\item 
+Store this posterior probability of the null hypothesis being true.
+
+\end{enumerate}
+\item Plot the distribution of the stored probabilities, or display summary statistics such as the mean and the 95\% credible interval.
+\end{enumerate}
+
+There are two interesting cases. The first is when statistical power is low (mean: 10\%); we will show that in this case, it simply doesn't matter much if we get a significant result.
+The posterior probability of the null being true will not change substantially; this is regardless of whether Type I error is 0.05 or some lower value like 0.005, as recommended by \cite{benjamin2018redefine}. 
+The other case is where statistical power is high (mean: 90\%); here, the posterior probability of the null being true will change considerably once we have a significant result under repeated sampling, especially if we follow the recommendation of \cite{benjamin2018redefine} to lower Type I error to 0.005.  
+
+Anticipating our main conclusion, when the prior probability of the null being true is low, 
+the only situation where a statistically significant effect under repeated sampling can shift our belief substantially against the null hypothesis being true is when statistical power is high. When power is low, it simply doesn't matter whether you lower the Type I error to 0.005, as suggested by \cite{benjamin2018redefine} and others. Null hypothesis significance testing only makes sense if power is high; in all other situations, the researcher is wasting their time computing p-values. When power is low, the intuition that a significant result will lower the posterior probability of the null hypothesis being true is an illusion.
+
+
+\begin{figure}[!htbp]
+\centering
+<<postProb1, include=TRUE,echo=FALSE,fig.width=8,fig.height=6>>=
+set.seed(123)
+nsim  <- 1e5 #100000
+Alpha <- c(0.05, 0.01, 0.005) # alpha: Type I error
+theta <- rbeta(nsim, shape1 = 60, shape2 =  6) # theta: prior probability against H0
+#theta <- rbeta(nsim, shape1 = 9, shape2 =  1) # theta: prior probability against H0
+thetaLab <- c("High P(H0)")
+beta     <- .90 # beta: 1-power
+betaLab  <- c("Low Power")
+for (a in 1:3) {
+  alpha <- Alpha[ a]
+  post  <- alpha*theta/(alpha*theta + (1-beta)*(1-theta))
+  Post  <- data.frame(alpha, theta=thetaLab, beta=betaLab, post, qL=NA, qH=NA)
+  Post$qL[1] <- quantile(post,p=c(0.025))
+  Post$qH[1] <- quantile(post,p=c(0.975))
+  if (a==1) { POST <- Post } else { POST <- rbind(POST,Post) }
+}
+qHL  <- quantile(theta,p=c(0.025,0.975))
+Post <- data.frame(alpha="Prior", theta=thetaLab, beta="Prior", post=theta, qL=NA, qH=NA)
+Post$qL[1] <- quantile(theta,p=c(0.025))
+Post$qH[1] <- quantile(theta,p=c(0.975))
+POST <- rbind(POST,Post)
+
+POST$alpha  <- factor(POST$alpha, levels=c("Prior",0.05,0.01,0.005)) # ,0.005
+levels(POST$alpha) <- c("Prior","alpha = .05","alpha = .01","alpha = .005") # \u03B1
+POST$alphaN <- as.numeric(POST$alpha)
+POST$qL2 <- substr(formatC(POST$qL, digits=2, format="g"),2,10)
+POST$qH2 <- substr(formatC(POST$qH, digits=2, format="g"),2,10)
+POST$qL2[POST$qL2=="NA"] <- NA
+POST$qH2[POST$qH2=="NA"] <- NA
+POST$quant <- NA
+idx <- !is.na(POST$qL2)
+POST$quant[idx] <- paste(POST$qL2[idx], POST$qH2[idx], sep=" - ")
+POST$quantX <- (POST$qL + POST$qH)/2
+#quartz()
+#cairo_pdf("Figs/postProb1-1.pdf")
+ggplot(data=POST) + 
+  geom_density_ridges2(aes(x=post, y=alpha, fill=alpha), alpha=0.7,
+                       quantile_lines=TRUE, quantiles=c(0.025, 0.975), scale=4) +
+  geom_text(aes(x=quantX,y=alphaN+0.3,label=quant))+
+  scale_fill_manual(values=c("lightblue","grey","grey","grey"), guide=FALSE)+
+  #scale_y_discrete(labels=c("Prior","\u03B1 = .05","\u03B1 = .01","\u03B1 = .005"))+
+  scale_y_discrete(labels=c("Prior",
+                            expression(atop("Posterior",paste(alpha," = .05" ))),
+                            expression(atop("Posterior",paste(alpha," = .01" ))),
+                            expression(atop("Posterior",paste(alpha," = .005")))))+
+  coord_cartesian(xlim=c(0,1))+
+  labs(x=expression(paste(Prob(H[0]),"=",theta)), y="Density",
+       title="High P(H0) and low power (10%)") + 
+  theme_bw(base_size=20)
+#dev.off()
+@
+  \caption{Probabilities for the Null-hypothesis, $P(H_0)=\theta$. Prior probability (blue) and posterior probabilities given a significant effect (grey) at a Type I error threshold $\alpha$ of $0.05$ and $0.01$. This is shown for a situation of low statistical Power of $10$\% (Type II error rate $\beta = 90$\%) and with a high prior probability for the null hypothesis ($\theta \sim Beta(60,6)$; blue).}\label{fig:postProb1}
+\end{figure}
+
+%\section*{Case 1: Investigating the posterior probability of the null hypothesis being true when power is low (Type II error 0.90) and the prior probability of the null hypothesis is high (Mean Prob(H0)=.90)}
+
+We next look at the posterior probability for different situations: As a first case, we investigate the posterior probability of the null hypothesis being true when the prior probability of the null hypothesis is high (Mean Prob(H0)=.90) and when power is low (Type II error 0.90). We investigate several scenarios by using different Type I errors ($\alpha = 0.05, 0.01$ and $0.005$).
+
+\paragraph{Scenario 1: Low power (0.10), Type I error 0.05}
+Let Type I error be $\alpha = 0.05$ and Type II error be $\beta = 0.90$. So, we have power at $1-\beta=0.10$. Such low power is by no means an uncommon situation in areas like psychology; examples are discussed in \cite{JaegerEngelmannVasishth2017,VasishthMertzenJaegerGelman2018,NicenboimRoettgeretal}.
+
+Figure \ref{fig:postProb1} shows the prior and posterior distributions. 
+The prior distribution is plotted in blue.
+Figure \ref{fig:postProb1} shows that getting a significant result hardly shifts our belief regarding the null. This should be very surprising to researchers who believe that a significant result shifts their belief about the null hypothesis being true.
+Next, consider what happens when we reduce Type I error to 0.01, which is lower than the traditional 0.05. 
+
+\paragraph{Scenario 2: Low power (0.10), Type I error 0.01}
+Many researchers \citep{benjamin2018redefine} have suggested that lowering Type I error will resolve many of the problems with NHST. Let's start by investigating what changes when we decrease Type I error to $0.01$ (researchers like \citealp{benjamin2018redefine} have proposed 0.005 as a threshold for Type I error; we turn to this proposal below). Type II error is held constant at 0.90.
+
+Figure \ref{fig:postProb1} shows that 
+lowering Type I error does shift our posterior probability of the null being true a bit more but not enough to have any substantial effect on our beliefs. It seems unreasonable to discard a null hypothesis if the posterior probability of it being true lies between 30 and 70\%. 
+
+\paragraph{Scenario 3: Low power, Type I error 0.05, incorporating uncertainty about Type II error}
+
+So far, we have been assuming a point value as representing power. 
+However, power is really a function that depends (inter alia) on the magnitude of the true (unknown) effect. Power therefore also has some uncertainty associated with it, because we do not know the magnitude of the true effect, and we do not know the true standard deviation.
+We can introduce uncertainty about power (or equivalently, uncertainty about Type II error) into the picture by setting our prior on $\beta \sim Beta(10,4)$, so that the Type II error is around 70\%. Different levels of power (1-Type II error) are visualized in Figure \ref{fig:type2}, and the low power situation of 30\% is shown in the bottom row of the figure.
+
+<<echo=FALSE,prepareforplots>>=
+rm(POST)
+set.seed(123)
+# alpha: Type I error
+Alpha <- c(0.05, 0.01, 0.005)
+# theta: prior probability against the null
+Theta   <- data.frame(H = rbeta(nsim, shape1 = 60, shape2 =  6))
+Theta$M <-                rbeta(nsim, shape1 = 15, shape2 = 15)
+Theta$L <-                rbeta(nsim, shape1 =  3, shape2 =  8)
+thetaLab <- c("High P(H0)","Medium P(H0)","Low P(H0)")
+#colMeans(Theta)
+# beta: 1-power
+Beta   <- data.frame(L = rbeta(nsim, shape1 = 10, shape2 =  4))
+Beta$M <-                rbeta(nsim, shape1 =  8, shape2 =  8)
+Beta$H <-                rbeta(nsim, shape1 =  2, shape2 = 20)
+betaLab <- c("Low Power","Medium Power","High Power")
+
+for (a in 1:3) {
+  alpha <- Alpha[ a]
+  for (t in 1:3) {
+    theta <- Theta[,t]
+    for (b in 1:3) {
+      beta  <- Beta[ ,b]
+      beta[beta>(1-alpha)] <- (1-alpha) # beta is limited by 1-alpha
+      post  <- alpha*theta/(alpha*theta + (1-beta)*(1-theta))
+      Post  <- data.frame(alpha, theta=thetaLab[t], beta=betaLab[b], post, qL=NA, qH=NA)
+      Post$qL[1] <- quantile(post,p=c(0.025))
+      Post$qH[1] <- quantile(post,p=c(0.975))
+      if (a==1 & t==1 & b==1) { POST <- Post } else { POST <- rbind(POST,Post) }
+    }
+    qHL <- quantile(theta,p=c(0.025,0.975))
+    Post <- data.frame(alpha, theta=thetaLab[t], beta="Prior", post=theta, qL=NA, qH=NA)
+    Post$qL[1] <- quantile(theta,p=c(0.025))
+    Post$qH[1] <- quantile(theta,p=c(0.975))
+    POST <- rbind(POST,Post)
+  }
+}
+POST$alpha <- factor(POST$alpha, levels=c(0.05,0.01,0.005))
+levels(POST$alpha) <- c(expression(paste(alpha == 0.05 )),
+                        expression(paste(alpha == 0.01 )),
+                        expression(paste(alpha == 0.005)))
+#levels(POST$alpha) <- c("\u03B1 = 0.05","\u03B1 = 0.01","\u03B1 = 0.005")
+  # paste0("a = ",levels(POST$alpha))
+POST$beta <- factor(POST$beta, levels=c("Prior","Low Power","Medium Power","High Power"))
+levels(POST$beta) <- c("Prior","Low Power\n(Mean = 30%)","Medium Power\n(Mean = 50%)","High Power\n(Mean = 90%)")
+#levels(POST$beta) <- c("Prior","Low Power\n\u03B2~Beta(10,4)","Medium Power\n\u03B2~Beta(8,8)","High Power\n\u03B2~Beta(2,20)")
+#levels(POST$beta) <- c("Prior",expression(atop("Low power",beta%~%Beta(10,4))),expression(atop("Medium power",beta%~%Beta(8,8))),expression(atop("High power",beta%~%Beta(2,20))))
+POST$theta <- factor(POST$theta)
+#levels(POST$theta) <- c("High~P(H0):~theta%~%Beta(60,6)",
+#                        "Med.~P(H0):~theta%~%Beta(15,15)",
+#                        "Low~P(H0):~theta%~%Beta(3,8)")
+levels(POST$theta) <- c(expression(atop("High P(H0)",  paste(theta," ~ Beta(60,6)"))),
+                        expression(atop("Medium P(H0)",paste(theta," ~ Beta(15,15)"))),
+                        expression(atop("Low P(H0)",   paste(theta," ~ Beta(3,8)"))))
+#levels(POST$theta) <- c(expression(atop("High P(H0)",  paste(theta," ~ Beta(9,1)"))),
+#                        expression(atop("Medium P(H0)",paste(theta," ~ Beta(5,5)"))),
+#                        expression(atop("Low P(H0)",   paste(theta," ~ Beta(3,8)"))))
+#levels(POST$theta) <- c("High P(H0)\n\u03B8 ~ Beta(60,6)",
+#                        "Medium P(H0)\n\u03B8 ~ Beta(20,20)",
+#                        "Low P(H0)\n\u03B8 ~ Beta(3,8)")
+POST$betaN <- as.numeric(POST$beta)
+POST$qL2 <- substr(formatC(POST$qL, digits=2, format="g"),2,10)
+POST$qH2 <- substr(formatC(POST$qH, digits=2, format="g"),2,10)
+POST$qL2[POST$qL2=="NA"] <- NA
+POST$qH2[POST$qH2=="NA"] <- NA
+POST$quant <- NA
+idx <- !is.na(POST$qL2)
+POST$quant[idx] <- paste(POST$qL2[idx], POST$qH2[idx], sep=" - ")
+POST$quantX <- (POST$qL + POST$qH)/2
+idx <- !is.na(POST$quantX) & POST$quantX<0.2
+POST$quantX[idx] <- POST$quantX[idx] + .22
+idx <- !is.na(POST$quantX) & POST$quantX>0.8
+POST$quantX[idx] <- POST$quantX[idx] - .22
+POST$lab <- NA
+POST$lab[!is.na(POST$qL2) & POST$beta=="Prior"] <- letters[1:9]
+#cairo_pdf("Figs/posteriorP-1.pdf", width=11, height=13.5)
+#quartz(width=11,height=13.5)
+
+@
+
+\begin{figure}[!htbp]
+\centering
+<<Beta, include=TRUE,echo=FALSE,fig.width=8,fig.height=6>>=
+tmpBeta <- Beta %>% gather(key="power", value="val")
+tmpBeta$power <- factor(tmpBeta$power,levels=c("L","M","H"),labels=c("Low Power\n(Mean = 30%)","Medium Power\n(Mean = 50%)","High Power\n(Mean = 90%)"))
+betaQL <- quantile(Beta$L,p=c(0.025,0.975))
+betaQM <- quantile(Beta$M,p=c(0.025,0.975))
+betaQH <- quantile(Beta$H,p=c(0.025,0.975))
+betaQLs <- substr(formatC(betaQL, digits=2, format="g"),2,10)
+betaQMs <- substr(formatC(betaQM, digits=2, format="g"),2,10)
+betaQHs <- substr(formatC(betaQH, digits=2, format="g"),2,10)
+
+ggplot(data=tmpBeta) + 
+  geom_density_ridges2(aes(x=val, y=power), fill="lightblue", alpha=0.7,
+                       quantile_lines=TRUE, quantiles=c(0.025, 0.975), scale=4) +
+  annotate("text", label=paste(betaQLs[1],betaQLs[2],sep=" - "),x=mean(betaQL),y=1.3)+
+  annotate("text", label=paste(betaQMs[1],betaQMs[2],sep=" - "),x=mean(betaQM),y=2.3)+
+  annotate("text", label=paste(betaQHs[1],betaQHs[2],sep=" - "),x=mean(betaQH),y=3.3)+
+  labs(x=expression(paste("Type II error rate: ",theta," ~ Beta(a,b)")), y="Density") +
+  theme_bw(base_size=20)
+@
+\caption{Visualization of the probability distribution associated with Type II error $\beta$ corresponding to low power ($\beta \sim Beta(10,4)$, mean power $E[1-\theta] = 30$\%), medium power ($\beta \sim Beta(8,8)$, mean power $E[1-\theta] = 50$\%), and high power ($\beta \sim Beta(2,20)$, mean power $E[1-\theta] = 90$\%) . Recall that Power is 1-Type II error.}\label{fig:type2}
+\end{figure}
+
+
+\begin{figure}[!htbp] % t!
+%\centering
+<<posteriorP,include=TRUE,echo=FALSE,fig.width=11,fig.height=13,out.width="1.0\\textwidth">>=
+ggplot(data=POST) + 
+  geom_density_ridges2(aes(x=post, y=beta, fill=beta),
+                       quantile_lines=TRUE, quantiles=c(0.025, 0.975), scale=4) +
+  geom_text(aes(x=quantX,y=betaN+0.3,label=quant))+
+  geom_text(aes(x=0.5,y=7.6,label=lab), size=9)+
+  facet_grid(alpha ~ theta, labeller=label_parsed) + #
+  scale_fill_manual(values=c("lightblue","grey","grey","grey"), guide=FALSE)+
+  coord_cartesian(xlim=c(0,1))+
+  labs(x=expression(paste(Prob(H[0]),"=",theta)), y="Density") + 
+  theme_bw(base_size=20)
+#ggsave("Figs/posteriorP-3.pdf")
+#dev.off()
+@
+\caption{Probabilities for the null hypothesis, $P(H_0)=\theta$, considering uncertainty about power. Prior probability (blue) and posterior probabilities given a significant effect (grey) at a Type I error $\alpha$ of $0.05$ (upper panels), $0.01$ (middle panels), and $0.005$ (lower panels). This is shown for situations of low statistical Power, $\beta \sim Beta(10,4)$ (mean Type II error rate of about $\beta = 70$\%, mean Power of about $30$\%), medium statistical Power, $\beta \sim Beta(8,8)$ (mean Type II error rate of $\beta = 50$\%, mean Power of $50$\%), and high statistical Power, $\beta \sim Beta(2,20)$ (mean Type II error rate of about $\beta = 10$\%, mean Power of about $90$\%), and for situations with a high (left panels), medium (middle panels), and low (right panels) prior probability for the null hypothesis.}\label{fig:postProb}
+\end{figure}
+
+
+
+Incorporating the uncertainty about Type II error (equivalently, power) increases the uncertainty about the posterior probability of the null quite a bit. Compare Figure \ref{fig:postProb1} ($\alpha = 0.05$) and 
+Figure \ref{fig:postProb}a (low power). 
+Figure \ref{fig:postProb}a
+shows that the posterior of the null being true now lies between 40 and 90\% (as opposed to 70 and 90\% in Figure \ref{fig:postProb1}). % 30 and 70\%
+
+\paragraph{Scenario 4: Type I error 0.01, incorporating uncertainty in Type II error}
+Having incorporated uncertainty into Type II error, consider now what happens if we lower Type I error to 0.01, from 0.05. Figure \ref{fig:postProb}d shows (cf. low power) that now the posterior distribution for the null hypothesis shifts to the left quite a bit more, but with wide uncertainty (10-60\%). Even with a low Type I error of 0.01, we should be quite unhappy rejecting the null if the posterior probability of the null being true is between the wide range of 10 and 60\%. % 14 and 70\%
+
+
+\paragraph{Scenario 5: Type I error 0.005, incorporating uncertainty in Type II error}
+Next, consider what happens if we lower Type I error to 0.005. This is the suggestion from \cite{benjamin2018redefine}. Perhaps surprisingly, Figure \ref{fig:postProb}g shows that now the posterior distribution for the null hypothesis does not shift much compared to Scenario 4 (see Fig. \ref{fig:postProb}d): the range is 6 to 45\% (compare with the range 10-60\% in scenario 4). % 7 to 50\%
+Thus, when power is low, there is simply no point in engaging in null hypothesis significance testing. Simply lowering the threshold of Type I error to 0.005 will not change much regarding our belief in the null hypothesis.
+
+%\section*{Case 2: Investigating the posterior probability of the null hypothesis being true when power is high}
+
+As a second case, we investigate the posterior probability of the null hypothesis being true when power is high.
+We consider the case where power is around 90\%. We will still assume a high prior probability for the null (Mean Prob(H0) = .90). We will consider three scenarios: Type I error at 0.05, 0.01, and 0.005.
+
+\paragraph{Scenario 6: High power (0.90), Type I error 0.05}
+First consider a situation where we have high power and Type I error is at the conventional 0.05 value. The question here is: in high power situations, does a significant effect shift our belief considerably away from the null, with Type I error at the conventional value of 0.05?
+The prior on Type II error is shown in Figure \ref{fig:type2}. The mean Type II error is 10\%, implying a mean for the power distribution to be 90\%.
+Perhaps surprisingly, Figure \ref{fig:postProb}a shows that even under high power, our posterior probability of the null being true does not shift dramatically: the probability lies between 20 and 60\%.
+
+
+\paragraph{Simulation 7: High power (mean 0.90), Type I error 0.01}
+
+Next, we reduce Type I error to 0.01.
+Figure \ref{fig:postProb}d shows that when power is high and Type I error is set at 0.01, we get a big shift in posterior probability of the null being true: the range is 5-25\%.
+
+\paragraph{Simulation 8: High power (mean 0.90), Type I error 0.005}
+
+Next, in this high-power situation, we reduce Type I error to 0.005.
+Figure \ref{fig:postProb}g shows that when power is high and Type I error is set at 0.005, we get a decisive shift in posterior probability of the null being true: the range is now 2-13\%.
+
+%\section*{Cases 3 and 4: Prior probability for the null is medium or low}
+Finally, we consider cases where the prior probability for the null is medium or low.
+
+\paragraph{Low prior probability for the null: Mean Prob(H0)=.10}
+
+One possible objection to the above analyses, however, is that the prior probability for the null hypothesis could often be much smaller than an average of 90\%. Indeed, in some situations, the null hypothesis may be very unlikely. We here simulate a situation where the prior probability for the null is an average of 10\% ($\theta \sim Beta(3,8)$). For this situation, Figures \ref{fig:postProb}c,f, and i show that the posterior probability for the null is always decisively low. Even for a conventional Type I error of $\alpha = 0.05$ in a low-powered study, the posterior probability for the null ranges from 1 to 25\%, which is quite low, and when turning to smaller $\alpha$ levels or higher power, the effect is decisive.
+
+However, of course this is not very informative, as we started out assuming that the null hypothesis was unlikely to be correct in the first place. Thus, we haven't learned much; a statistical significance test would just confirm what we already believed with high certainty before we carried out the test.
+
+\paragraph{Medium prior probability for the null: Mean Prob(H0)=.50}
+
+Now consider the case where the prior probability for the null being true lies at an average of 50\% (e.g., $\theta \sim Beta(15,15)$). Here, we don't know whether the null or the alternative hypothesis is true a priori, and both outcomes seem similarly likely. In this situation, when we use a conventional Type I error level of $\alpha = 0.05$ in a low-powered study, a significant effect will bring our posterior probability for the null only to a range of 6-40\%, and will thus leave us with much uncertainty after obtaining a significant effect. 
+
+However, either using a stricter Type I error level (e.g., $\alpha = 0.005$) or running a high-powered study each suffices to yield informative results: For a high-powered study and $\alpha = 0.05$, a significant result will (under our assumptions) bring the posterior probability to 2-10\% (Figure \ref{fig:postProb}b), which is quite informative. And for a Type I error level of $\alpha = 0.005$ a significant effect brings decisive evidence against the null for all the levels of power that we investigated (Figure \ref{fig:postProb}h), with a posterior probabilty of 0.7-6\% even for low-powered studies. This suggests that when the prior probabilities of the null and the alternative hypotheses are each at 50\%, then either high power or a strict Type I error of $\alpha = 0.005$ will yield informative outcomes once a significant effect is observed.
+
+%\section*{Discussion}
+
+Taken together, we analyzed the posterior probability for the null given a significant effect. We provide a shiny app (https://danielschad.shinyapps.io/probnull/) that allows computing the posterior distribution for different choices of prior, Type I and Type II error.
+For psychology and preclinical biomedical research, the prior odds of H1 relative to H0 are estimated to be about 1:10 \citep{benjamin2018redefine}, reflecting a high prior probability of the null of 90\%.
+For this common and standard situation in psychology and other areas, when power is low, the posterior probability of the null being true doesn't change in any meaningful way after seeing a significant result, even if we change Type I error to 0.005. 
+What shifts our belief in a meaningful way is reducing Type I error to say 0.005 (as suggested by \citealp{benjamin2018redefine} and others), \textit{as well as} running a high powered study. Only this combination of high power and small Type I error rate yields informative results.
+
+One might object here that we set the prior probability of the null hypothesis being true at an unreasonably high value. This objection has some merit; although typically the prior probability for the null may lie at 10\%, there may well be some situations where the null is unlikely to be true a priori. 
+In this situation, our results show that a significant effect does indicate a very low posterior probability of the null. This is the case across a range of Type I error levels ($\alpha$ of 0.05, 0.01, 0.005) and for different levels of power (Figure \ref{fig:postProb}c+f+i). Even for low power studies with $\alpha = 0.05$ the posterior probability is between 1 and 25\%, which is quite low. 
+So yes, if the prior probability of the null being true is already low, even with relatively low power and the standard Type I error level of 0.05, we are entitled to changing our belief quite strongly against the null once we have a significant effect. An obvious issue here is that if we already don't believe in the null before we do the statistical test, why bother to try to reject the null hypothesis? 
+Even if we were satisfied with rejecting a null hypothesis we don't believe in in the first place, running low power studies is always a bad idea because of Type M and S error. As \cite{gelmancarlin} and many others before them have pointed out, significant effects from low power studies will have exaggerated estimates of effects and could have the wrong sign of the effect. The probability of the null hypothesis being true is not the only important issue in a statistical test; accurate estimation of the parameter of interest is equally important.
+
+In summary, we investigated the intuitive belief held by some researchers that finding a significant effect reduces the posterior probability of the null hypothesis. We show that this intuition is not true in general. The common situation in psychology and other areas is that the null hypothesis is a priori quite likely to be true. In such a situation, contrary to intuition, finding a significant effect leaves us with much posterior uncertainty about the null hypothesis being true. Obtaining a reasonable reduction in uncertainty is thus another reason to adopt the recent recommendation by \cite{benjamin2018redefine} to change Type I error to $\alpha = 0.005$. Furthermore, conducting high power studies is an obvious but neglected remedy. 
+Otherwise, the results will be indecisive. 
+
+%Here, for the common situation of finding a significant effect in a study, we use Bayes' rule to estimate the posterior probability of the null hypothesis. 
+Our key result is that the posterior probability for the null given a significant effect varies widely across settings involving different Type I and Type II errors and different prior probabilities for the null. The intuition that frequentist p-values may provide a shortcut to this information is in general misleading.
+
+\section*{Acknowledgements}
+
+Thanks to Valentin Amrhein and Sander Greenland for comments. 
+Funded by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) – Project number 317633480, SFB 1287, Project Q, with principal investigators Shravan Vasishth and Ralf Engbert.
+
+\section*{Author contribution}
+
+SV had the idea for the paper. SV and DJS performed analyses. SV and DJS generated the shiny app. SV and DJS wrote the paper.
+
+\section*{Availability of simulations and computer code}
+
+All the computer code used for the simulations reported in the present manuscript, and the code for generating all Figures, will be freely available online at https://osf.io/9g5bp/. Moreover, we make a shiny app available at https://danielschad.shinyapps.io/probnull/ that allows computing the posterior probability for the null given a significant effect for many different settings of Type I and II error and for different prior probabilities for the null.
+
+\bibliographystyle{apacite}
+\bibliography{SchadVasishth}
+
+\end{document}
+
